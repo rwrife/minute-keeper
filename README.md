@@ -21,7 +21,7 @@ Documentation-only scaffold; app and tests do not exist yet. Planned MVP: local 
 
 Flutter stable/Dart single codebase. Windows primary CI/release, Android and iOS phones/tablets first-class; enable `windows/`, `android/`, `ios/` in first implementation issue. Native per-platform adaptive widgets: Cupertino iOS, Material 3 Android, Fluent Windows. Touch and keyboard/mouse, resize, scalable text, screen-reader labels, high contrast, full Windows keyboard navigation. Identifier `com.infinityball.minutekeeper` for Android applicationId, iOS bundle ID, Windows identity if used. App Store Connect bundle identifier CREATED; ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8, ASC_TEAM_ID secret names installed (no values in repo).
 
-`AppStore/description.txt` is planned-feature copy, not a feature claim. Generate actual `AppStore/icon.png` with `spark-media image` after skeleton exists; wire Windows ICO, Android and iOS launcher icons. No placeholder icons.
+`AppStore/description.txt` is planned-feature copy, not a feature claim. Real 1024×1024 RGB `AppStore/icon.png` generated via OpenAI Images (`spark-media image`); platform icon wiring awaits skeleton. No placeholder icons.
 
 ## Development
 
