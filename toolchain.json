@@ -1,0 +1,10 @@
+{
+  "platform": "windows+android+ios+flutter",
+  "channel": "stable",
+  "windows_primary": true,
+  "mobile_tablet_enabled": true,
+  "bundle_identifier": "com.infinityball.minutekeeper",
+  "android_application_id": "com.infinityball.minutekeeper",
+  "ios_bundle_identifier": "com.infinityball.minutekeeper",
+  "status": "PLANNED — scaffold contains documentation only; pin exact Flutter stable version in skeleton issue"
+}
