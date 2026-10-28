@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Pinned Flutter Docker checks
         run: |
-          docker run --volume "$PWD:/src" --workdir /src --entrypoint /bin/bash gmeligio/flutter-android:3.47.7 -lc 'flutter pub get --enforce-lockfile && flutter test && flutter build apk --debug'
+          docker run --volume "$PWD:/src" --workdir /src --entrypoint /bin/bash gmeligio/flutter-android:3.47.7 -c 'flutter pub get --enforce-lockfile && flutter test && flutter build apk --debug'
   android:
     runs-on: ubuntu-latest
     steps:
