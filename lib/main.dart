@@ -47,7 +47,10 @@ class _MinuteKeeperHomeState extends State<_MinuteKeeperHome> {
   Ledger? _ledger;
   String? _meetingId;
   String? _agendaId;
+  bool _dashboard = false;
+  ActionStatus? _actionFilter;
   bool _busy = false;
+  // ponytail: Status-only filters; add owner/date search when action volume warrants it.
   Object? _error;
 
   TargetPlatform get _platform => widget.platform;
@@ -357,6 +360,78 @@ class _MinuteKeeperHomeState extends State<_MinuteKeeperHome> {
     return material.ListTile(key: key, title: Text(text), onTap: action);
   }
 
+  Future<void> _complete(Meeting meeting, ActionItem action) => _update(
+    _copy(
+      meeting,
+      actions: [
+        for (final item in meeting.actions)
+          if (item.id == action.id)
+            item.transition(ActionStatus.completed)
+          else
+            item,
+      ],
+    ),
+  );
+
+  Widget _dashboardView() {
+    final actions = [
+      for (final meeting in _ledger!.meetings)
+        for (final action in meeting.actions)
+          if (_actionFilter == null
+              ? action.status != ActionStatus.completed
+              : action.status == _actionFilter)
+            (meeting, action),
+    ];
+    return ListView(
+      key: const Key('action-dashboard'),
+      padding: const EdgeInsets.all(12),
+      children: [
+        const Text('Outstanding actions', style: TextStyle(fontSize: 22)),
+        Wrap(
+          spacing: 8,
+          children: [
+            for (final (label, filter) in [
+              ('Open', null),
+              ('Pending', ActionStatus.pending),
+              ('Carried over', ActionStatus.carriedOver),
+              ('Completed', ActionStatus.completed),
+            ])
+              _button(
+                label,
+                () => setState(() => _actionFilter = filter),
+                key: Key('filter-${filter?.name ?? 'open'}'),
+              ),
+          ],
+        ),
+        if (actions.isEmpty) const Text('No actions in this view'),
+        for (final (meeting, action) in actions)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${action.text} · ${action.owner} · ${meeting.title}'
+                  '${action.dueDate == null ? '' : ' · Due ${action.dueDate}'}'
+                  ' · ${action.status.name}',
+                ),
+                if (action.status != ActionStatus.completed)
+                  _button(
+                    'Complete ${action.text}',
+                    _busy
+                        ? null
+                        : () {
+                            _complete(meeting, action);
+                          },
+                    key: Key('complete-${action.id}'),
+                  ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
   Widget _meetings() => ListView(
     children: [
       Padding(
@@ -372,10 +447,33 @@ class _MinuteKeeperHomeState extends State<_MinuteKeeperHome> {
           '${m.title} · ${m.date}',
           () => setState(() {
             _meetingId = m.id;
+            _dashboard = false;
             _agendaId = null;
           }),
           key: Key('meeting-${m.id}'),
         ),
+    ],
+  );
+
+  Widget _navigation() => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      _button(
+        'Meetings',
+        () => setState(() {
+          _dashboard = false;
+          _meetingId = null;
+        }),
+        key: const Key('nav-meetings'),
+      ),
+      _button(
+        'Actions',
+        () => setState(() {
+          _dashboard = true;
+          _meetingId = null;
+        }),
+        key: const Key('nav-actions'),
+      ),
     ],
   );
 
@@ -469,15 +567,34 @@ class _MinuteKeeperHomeState extends State<_MinuteKeeperHome> {
               if (box.maxWidth >= 720) {
                 return Row(
                   children: [
-                    SizedBox(width: 300, child: _meetings()),
+                    SizedBox(
+                      width: 260,
+                      child: Column(
+                        children: [
+                          _navigation(),
+                          const SizedBox(height: 1),
+                          Expanded(child: _meetings()),
+                        ],
+                      ),
+                    ),
                     const SizedBox(width: 1),
                     Expanded(
-                      child: m == null
-                          ? const Center(
-                              child: Text('Your private meeting space'),
-                            )
-                          : _detail(m),
+                      child: _dashboard
+                          ? _dashboardView()
+                          : (m == null
+                                ? const Center(
+                                    child: Text('Your private meeting space'),
+                                  )
+                                : _detail(m)),
                     ),
+                  ],
+                );
+              }
+              if (_dashboard) {
+                return Column(
+                  children: [
+                    _navigation(),
+                    Expanded(child: _dashboardView()),
                   ],
                 );
               }
@@ -496,7 +613,12 @@ class _MinuteKeeperHomeState extends State<_MinuteKeeperHome> {
                   ],
                 );
               }
-              return _meetings();
+              return Column(
+                children: [
+                  _navigation(),
+                  Expanded(child: _meetings()),
+                ],
+              );
             },
           );
     final content = Column(

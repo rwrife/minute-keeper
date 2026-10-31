@@ -15,7 +15,7 @@ Small volunteer groups, clubs, and households lose decisions in chat threads. Mi
 
 ## MVP / status
 
-Runnable Flutter shell with iOS Cupertino, Android Material 3, and Windows Fluent presentation; meeting and persistence features do not exist yet. Planned MVP: local meetings and agenda; decisions/actions; outstanding-action view; opt-in Markdown share; validated JSON backup/restore; adaptive phone/tablet/Windows layout; platform-authentic controls. No cloud accounts, recording, transcription, automatic attendee tracking, or background sync. Data stays on device; sharing/export leaves it only on user action. No permissions required for core use; file picker/share APIs only on explicit request. Treat minutes as private; sharing UI must preview content before export.
+Flutter app with iOS Cupertino, Android Material 3, and Windows Fluent presentation. Local meetings, agenda, decisions/actions, and cross-meeting action dashboard persist on device. Planned next: opt-in Markdown share and validated JSON backup/restore. Adaptive phone/tablet/Windows layout uses platform-authentic controls. No cloud accounts, recording, transcription, automatic attendee tracking, or background sync. Data stays on device; sharing/export leaves it only on user action. No permissions required for core use; file picker/share APIs only on explicit request. Treat minutes as private; sharing UI must preview content before export.
 
 ## Platforms / build
 
