@@ -109,6 +109,111 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  for (final platform in [
+    TargetPlatform.iOS,
+    TargetPlatform.android,
+    TargetPlatform.windows,
+  ]) {
+    for (final width in [390.0, 900.0, 1400.0]) {
+      testWidgets(
+        '$platform ${width.toInt()}px action dashboard filters and persists completion',
+        (tester) async {
+          tester.view.physicalSize = Size(width, 800);
+          tester.view.devicePixelRatio = 1;
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+          });
+          final id = newRecordId();
+          final agendaId = newRecordId();
+          final actionId = newRecordId();
+          final secondActionId = newRecordId();
+          final secondAgendaId = newRecordId();
+          final store = _MemoryLedgerFile(File('unused-test-ledger.json'));
+          store.current = Ledger([
+            Meeting(
+              id: id,
+              title: 'Club',
+              date: '2026-10-31',
+              agenda: [AgendaItem(id: agendaId, title: 'Plans', order: 0)],
+              decisions: [],
+              actions: [
+                ActionItem(
+                  id: actionId,
+                  agendaId: agendaId,
+                  text: 'Send notes',
+                  owner: 'Ari',
+                ),
+              ],
+            ),
+            Meeting(
+              id: newRecordId(),
+              title: 'Board',
+              date: '2026-10-30',
+              agenda: [
+                AgendaItem(id: secondAgendaId, title: 'Agenda', order: 0),
+              ],
+              decisions: [],
+              actions: [
+                ActionItem(
+                  id: secondActionId,
+                  agendaId: secondAgendaId,
+                  text: 'Call members',
+                  owner: 'Bea',
+                  status: ActionStatus.carriedOver,
+                ),
+              ],
+            ),
+          ]);
+          await tester.pumpWidget(
+            MinuteKeeperApp(platform: platform, store: store),
+          );
+          await tester.pumpAndSettle();
+          if (width < 720) {
+            expect(find.byKey(const Key('nav-actions')), findsOneWidget);
+          }
+          await tester.tap(find.byKey(const Key('nav-actions')));
+          await tester.pumpAndSettle();
+          expect(
+            find.textContaining('Send notes · Ari · Club'),
+            findsOneWidget,
+          );
+          expect(
+            find.textContaining('Call members · Bea · Board'),
+            findsOneWidget,
+          );
+          await tester.tap(find.byKey(const Key('filter-carriedOver')));
+          await tester.pumpAndSettle();
+          expect(find.textContaining('Send notes · Ari · Club'), findsNothing);
+          expect(
+            find.textContaining('Call members · Bea · Board'),
+            findsOneWidget,
+          );
+          await tester.tap(find.byKey(const Key('filter-open')));
+          await tester.pumpAndSettle();
+          await tester.tap(find.byKey(Key('complete-$actionId')));
+          await tester.pumpAndSettle();
+          expect(
+            store.current.meetings.first.actions.single.status,
+            ActionStatus.completed,
+          );
+          expect(find.textContaining('Send notes · Ari · Club'), findsNothing);
+          expect(
+            find.textContaining('Call members · Bea · Board'),
+            findsOneWidget,
+          );
+          await tester.tap(find.byKey(const Key('filter-completed')));
+          await tester.pumpAndSettle();
+          expect(
+            find.textContaining('Send notes · Ari · Club'),
+            findsOneWidget,
+          );
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+  }
 }
 
 class _MemoryLedgerFile extends LedgerFile {
