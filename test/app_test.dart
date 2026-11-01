@@ -106,6 +106,14 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
       expect(find.text('Decision: Approve budget'), findsOneWidget);
       expect(find.textContaining('Send report · Ari'), findsOneWidget);
+      expect(
+        find.byKey(const Key('copy-minutes'), skipOffstage: false),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('toggle-redaction'), skipOffstage: false),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
     });
   }
