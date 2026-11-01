@@ -1,11 +1,15 @@
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' as material;
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'backup.dart';
 import 'ledger.dart';
 
 void main() => runApp(const MinuteKeeperApp());
@@ -50,6 +54,7 @@ class _MinuteKeeperHomeState extends State<_MinuteKeeperHome> {
   bool _dashboard = false;
   ActionStatus? _actionFilter;
   bool _busy = false;
+  bool _includePrivateFields = false;
   // ponytail: Status-only filters; add owner/date search when action volume warrants it.
   Object? _error;
 
@@ -121,6 +126,54 @@ class _MinuteKeeperHomeState extends State<_MinuteKeeperHome> {
         });
       }
       rethrow;
+    }
+  }
+
+  Future<void> _exportBackup() async {
+    if (_busy || _ledger == null) return;
+    try {
+      await FilePicker.saveFile(
+        fileName: 'minute-keeper-backup.json',
+        bytes: Uint8List.fromList(utf8.encode(exportBackup(_ledger!))),
+        mimeType: 'application/json',
+      );
+    } catch (error) {
+      if (mounted) setState(() => _error = error);
+    }
+  }
+
+  Future<void> _importBackup({required bool replaceConflicts}) async {
+    if (_busy || _ledger == null || _store == null) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final picked = await FilePicker.pickFile(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+      );
+      if (picked != null) {
+        final length = await picked.length();
+        if (length == null || length > 10 * 1024 * 1024) {
+          throw const FormatException('Backup exceeds 10 MB limit');
+        }
+        final bytes = await picked.readAsBytes();
+        if (bytes.length > 10 * 1024 * 1024) {
+          throw const FormatException('Backup exceeds 10 MB limit');
+        }
+        final candidate = importBackup(
+          utf8.decode(bytes),
+          _ledger!,
+          replaceConflicts: replaceConflicts,
+        );
+        await _store!.save(candidate);
+        if (mounted) setState(() => _ledger = candidate);
+      }
+    } catch (error) {
+      if (mounted) setState(() => _error = error);
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -474,6 +527,21 @@ class _MinuteKeeperHomeState extends State<_MinuteKeeperHome> {
         }),
         key: const Key('nav-actions'),
       ),
+      _button(
+        'Export backup',
+        _busy ? null : _exportBackup,
+        key: const Key('export-backup'),
+      ),
+      _button(
+        'Import (keep existing)',
+        _busy ? null : () => _importBackup(replaceConflicts: false),
+        key: const Key('import-keep'),
+      ),
+      _button(
+        'Import (replace conflicts)',
+        _busy ? null : () => _importBackup(replaceConflicts: true),
+        key: const Key('import-replace'),
+      ),
     ],
   );
 
@@ -481,20 +549,51 @@ class _MinuteKeeperHomeState extends State<_MinuteKeeperHome> {
     final selected =
         m.agenda.where((a) => a.id == _agendaId).firstOrNull ??
         m.agenda.firstOrNull;
+    final markdown = markdownMinutes(
+      m,
+      includePrivateFields: _includePrivateFields,
+    );
     return ListView(
       padding: const EdgeInsets.all(12),
       children: [
         Text('${m.title} · ${m.date}', style: const TextStyle(fontSize: 22)),
-        _button(
-          'Edit meeting',
-          _busy ? null : () => _editMeeting(m),
-          key: const Key('edit-meeting'),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _button(
+              'Edit meeting',
+              _busy ? null : () => _editMeeting(m),
+              key: const Key('edit-meeting'),
+            ),
+            _button(
+              'Add agenda item',
+              _busy ? null : () => _addAgenda(m),
+              key: const Key('add-agenda'),
+            ),
+            _button(
+              'Copy minutes',
+              _busy
+                  ? null
+                  : () async {
+                      await Clipboard.setData(ClipboardData(text: markdown));
+                    },
+              key: const Key('copy-minutes'),
+            ),
+            _button(
+              _includePrivateFields
+                  ? 'Redact owners/dates'
+                  : 'Include owners/dates',
+              _busy
+                  ? null
+                  : () => setState(
+                      () => _includePrivateFields = !_includePrivateFields,
+                    ),
+              key: const Key('toggle-redaction'),
+            ),
+          ],
         ),
-        _button(
-          'Add agenda item',
-          _busy ? null : () => _addAgenda(m),
-          key: const Key('add-agenda'),
-        ),
+        const SizedBox(height: 12),
         for (final a in m.agenda)
           _row(
             '${a.order + 1}. ${a.title}',
@@ -547,6 +646,17 @@ class _MinuteKeeperHomeState extends State<_MinuteKeeperHome> {
               ),
           ],
         ],
+        const SizedBox(height: 12),
+        const Text(
+          'Minutes preview',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        Container(
+          key: const Key('minutes-preview'),
+          padding: const EdgeInsets.all(8),
+          color: const Color(0x10000000),
+          child: Text(markdown),
+        ),
       ],
     );
   }
