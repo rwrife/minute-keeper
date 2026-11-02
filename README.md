@@ -21,7 +21,7 @@ Flutter app with iOS Cupertino, Android Material 3, and Windows Fluent presentat
 
 Flutter stable/Dart single codebase. Windows primary CI/release, Android and iOS phones/tablets first-class; `windows/`, `android/`, `ios/` platform projects included. Native per-platform adaptive widgets: Cupertino iOS, Material 3 Android, Fluent Windows. Touch and keyboard/mouse, resize, scalable text, screen-reader labels, high contrast, and full Windows keyboard navigation remain acceptance goals for later workflow issues. Identifier `com.infinityball.minutekeeper` for Android applicationId, iOS bundle ID, Windows MSIX identity reserved for packaging issue. App Store Connect bundle identifier CREATED; ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8, ASC_TEAM_ID secret names installed (no values in repo).
 
-`AppStore/description.txt` is planned-feature copy, not a feature claim. Real 1024×1024 RGB `AppStore/icon.png` generated via OpenAI Images (`spark-media image`) and resized into Android, iOS, and Windows icon sets. No placeholder launcher icons.
+`AppStore/description.txt` describes shipped offline features. `AppStore/icon.png` is a real 1024×1024 opaque RGB icon generated with OpenAI Images (`gpt-image-2.5-flare`) via `spark-media image`; source generated 2026-11-02 at `~/media/minute-keeper/images/20261102T074220Z_openai_8c600c.png`. Prompt requested a checklist and clock over an indigo–teal–coral gradient, without lettering, border, rounded outer corners or transparency; RGB encoding and 1024×1024 dimensions verified, but visual inspection was not available on this terminal-only host. `tool/wire_icons.py` derives iOS, Android, and Windows icons from `AppStore/icon.png` (requires Pillow). No placeholder launcher icons.
 
 ## Development
 

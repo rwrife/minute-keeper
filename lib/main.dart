@@ -240,7 +240,9 @@ class _MinuteKeeperHomeState extends State<_MinuteKeeperHome> {
           if (_ios) {
             return CupertinoAlertDialog(
               title: Text(heading),
-              content: Column(children: fields),
+              content: SingleChildScrollView(
+                child: Column(mainAxisSize: MainAxisSize.min, children: fields),
+              ),
               actions: [
                 CupertinoDialogAction(
                   onPressed: submitting ? null : () => Navigator.pop(context),
@@ -256,7 +258,9 @@ class _MinuteKeeperHomeState extends State<_MinuteKeeperHome> {
           if (_windows) {
             return fluent.ContentDialog(
               title: Text(heading),
-              content: Column(mainAxisSize: MainAxisSize.min, children: fields),
+              content: SingleChildScrollView(
+                child: Column(mainAxisSize: MainAxisSize.min, children: fields),
+              ),
               actions: [
                 fluent.Button(
                   onPressed: submitting ? null : () => Navigator.pop(context),
@@ -307,16 +311,22 @@ class _MinuteKeeperHomeState extends State<_MinuteKeeperHome> {
       );
     }
     if (_windows) {
-      return fluent.TextBox(
-        controller: controller,
-        placeholder: label,
-        key: Key('field-$label'),
+      return Semantics(
+        label: label,
+        child: fluent.TextBox(
+          controller: controller,
+          placeholder: label,
+          key: Key('field-$label'),
+        ),
       );
     }
-    return material.TextField(
-      controller: controller,
-      decoration: material.InputDecoration(labelText: label),
-      key: Key('field-$label'),
+    return Semantics(
+      label: label,
+      child: material.TextField(
+        controller: controller,
+        decoration: material.InputDecoration(labelText: label),
+        key: Key('field-$label'),
+      ),
     );
   }
 
@@ -408,7 +418,12 @@ class _MinuteKeeperHomeState extends State<_MinuteKeeperHome> {
       );
     }
     if (_windows) {
-      return fluent.ListTile(key: key, title: Text(text), onPressed: action);
+      // Fluent ListTile has pointer handling, but no keyboard activation.
+      return fluent.Button(
+        key: key,
+        onPressed: action,
+        child: Align(alignment: Alignment.centerLeft, child: Text(text)),
+      );
     }
     return material.ListTile(key: key, title: Text(text), onTap: action);
   }
