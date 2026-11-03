@@ -1,0 +1,75 @@
+name: Windows release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (vMAJOR.MINOR.PATCH)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: windows-release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.7'
+          channel: stable
+          cache: true
+      - run: flutter pub get --enforce-lockfile
+      - run: flutter test
+      - run: flutter build windows --release
+      - name: Package and inspect portable ZIP
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($env:RELEASE_TAG -cnotmatch '^v[0-9]+\.[0-9]+\.[0-9]+$') { throw 'Expected vMAJOR.MINOR.PATCH tag' }
+          $source = 'build/windows/x64/runner/Release'
+          foreach ($file in @('minutekeeper.exe', 'flutter_windows.dll', 'data/flutter_assets/AssetManifest.bin')) {
+            if (-not (Test-Path (Join-Path $source $file))) { throw "Missing build file: $file" }
+          }
+          $zip = "minute-keeper-windows-$env:RELEASE_TAG.zip"
+          Compress-Archive -Path "$source/*" -DestinationPath $zip -CompressionLevel Optimal
+          Add-Type -AssemblyName System.IO.Compression
+          $archive = [System.IO.Compression.ZipFile]::OpenRead((Join-Path (Get-Location) $zip))
+          try {
+            $names = @($archive.Entries | ForEach-Object { $_.FullName.Replace('\', '/') })
+            foreach ($file in @('minutekeeper.exe', 'flutter_windows.dll', 'data/flutter_assets/AssetManifest.bin')) {
+              if ($names -cnotcontains $file) { throw "Missing archive entry: $file" }
+            }
+            if ((Get-Item $zip).Length -le 0) { throw 'Empty archive' }
+            Write-Host "Verified $zip with $($names.Count) entries"
+          } finally { $archive.Dispose() }
+      - name: Publish GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $zip = "minute-keeper-windows-$env:RELEASE_TAG.zip"
+          $existing = gh release list --repo $env:GITHUB_REPOSITORY --limit 100 --json tagName --jq '.[].tagName'
+          if ($LASTEXITCODE -ne 0) { throw 'Release lookup failed' }
+          if ($existing -cnotcontains $env:RELEASE_TAG) {
+            $headSha = git rev-parse HEAD
+            gh release create $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --target $headSha --title "Minute Keeper $env:RELEASE_TAG" --generate-notes
+            if ($LASTEXITCODE -ne 0) { throw 'Release creation failed' }
+          }
+          gh release upload $env:RELEASE_TAG $zip --repo $env:GITHUB_REPOSITORY --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Release asset upload failed' }
+          $assets = gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --json assets --jq '.assets[].name'
+          if ($LASTEXITCODE -ne 0 -or $assets -cnotcontains $zip) { throw 'Release asset verification failed' }
